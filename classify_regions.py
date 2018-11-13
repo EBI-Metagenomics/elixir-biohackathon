@@ -2,6 +2,9 @@ import re
 import os
 import logging
 import glob
+import sys
+import argparse
+import json
 
 raw_f_regex = re.compile(
     "([A-z0-9.-]+)\s+-\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([-+])\s+([-+])\s+(\d+)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(.+)\s!\s+ -")
@@ -26,7 +29,7 @@ logging.basicConfig(level=logging.INFO)
 def calc_overlap(read, reg):
     read_s, read_f = read
     reg_s, reg_f = reg
-    if read_s>read_f:
+    if read_s > read_f:
         print(read_s, read_f)
         input()
     overlap = max(min(read_f, reg_f) - max(read_s, reg_s), 0)
@@ -47,7 +50,7 @@ def load_data(filename=RAW_DATA_FILE):
         return [l[0] for l in [raw_f_regex.findall(l) for l in f] if bool(l)]
 
 
-def print_matches(region_matches):
+def normalise_results(region_matches):
     count_matches = len(region_matches)
     results = {}
     for k in regions:
@@ -65,15 +68,29 @@ def print_matches(region_matches):
     return results
 
 
-def main():
-    for f in glob.glob(os.path.join(os.getcwd(), 'examples', '*')):
-        data = load_data(f)
-        region_matches = []
-        for read in data:
-            limits = list(map(int, read[4:6]))
-            region_matches.extend(get_regions(limits))
-        logging.info(f + " " + str(print_matches(region_matches)))
+def retrieve_regions(tblout_file, outfile):
+    data = load_data(tblout_file)
+    region_matches = []
+    for read in data:
+        limits = list(map(int, read[4:6]))
+        region_matches.extend(get_regions(limits))
+    normalised_matches = normalise_results(region_matches)
+    print(json.dumps(normalised_matches))
+    with open(outfile, 'w') as f:
+        json.dump(normalised_matches, f)
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description='Tool to determine which regions were amplified in 16S data')
+    parser.add_argument('file', help='Overlapped tblout file')
+    parser.add_argument('-o', '--output_file', default='amplified_regions.json')
+    return parser.parse_args(argv)
+
+
+def main(argv):
+    args = parse_args(argv)
+    retrieve_regions(args.file, args.output_file)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
