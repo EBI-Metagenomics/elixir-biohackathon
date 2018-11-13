@@ -44,7 +44,7 @@ def get_regions(raw_sequence):
 
 
 # Parse, filter empty lines and unpack into 2D array
-def load_data(filename=RAW_DATA_FILE):
+def load_data(filename):
     with open(filename) as f:
         return [l[0] for l in [raw_f_regex.findall(l) for l in f] if bool(l)]
 
@@ -82,7 +82,7 @@ def retrieve_regions(tblout_file, outfile):
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Tool to determine which regions were amplified in 16S data')
-    parser.add_argument('--file', help='Overlapped tblout file')
+    parser.add_argument('file', help='Overlapped tblout file')
     parser.add_argument('-o', '--output_file', default='amplified_regions.json')
     return parser.parse_args(argv)
 
