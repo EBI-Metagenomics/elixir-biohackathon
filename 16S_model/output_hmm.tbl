@@ -1,0 +1,13 @@
+#target name         accession query name                                                          accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+#------------------- --------- ------------------------------------------------------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+SSU_rRNA_bacteria    RF00177   ENA|U00096.3:4035531..4037072:rRNA|U00096.3:4035531..4037072:rRNA.3 -         hmm        4     1532        4     1541      +     -    6 0.54  10.8 1194.8         0 !   -
+#
+# Program:         cmscan
+# Version:         1.1.2 (July 2016)
+# Pipeline mode:   SCAN
+# Query file:      ecoli16S.fa
+# Target file:     RF00177.CM
+# Option settings: cmscan -o output_hmm.out --tblout output_hmm.tbl --cut_ga --hmmonly RF00177.CM ecoli16S.fa 
+# Current dir:     /Users/mdb/work/biohackathon/16S
+# Date:            Wed Nov 14 15:20:23 2018
+# [ok]

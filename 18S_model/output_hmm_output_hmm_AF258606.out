@@ -1,0 +1,163 @@
+# cmscan :: search sequence(s) against a CM database
+# INFERNAL 1.1.2 (July 2016)
+# Copyright (C) 2016 Howard Hughes Medical Institute.
+# Freely distributed under a BSD open source license.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query sequence file:                   AF258606.fa
+# target CM database:                    RF01960.cm
+# output directed to file:               output_hmm_output_hmm_AF258606.out
+# tabular output of hits:                output_hmm_AF258606.tbl
+# model-specific thresholding:           GA cutoffs
+# HMM-only mode (for all models):        on [CM will not be used]
+# number of worker threads:              4
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       AF258606.1  [L=1743]
+Description: Scytalidium hyalinum strain IP151783 18S ribosomal RNA gene, partial sequence
+Hit scores:
+ rank     E-value  score  bias  modelname         start    end   mdl trunc   gc  description
+ ----   --------- ------ -----  ---------------- ------ ------   --- ----- ----  -----------
+  (1) !         0 1273.5   0.3  SSU_rRNA_eukarya      2   1743 + hmm     - 0.48  -
+
+
+Hit alignments:
+>> SSU_rRNA_eukarya  
+ rank     E-value  score  bias mdl mdl from   mdl to       seq from      seq to       acc trunc   gc
+ ----   --------- ------ ----- --- -------- --------    ----------- -----------      ---- ----- ----
+  (1) !         0 1273.5   0.3 hmm       34     1825 ..           2        1743 + .] 0.93     - 0.48
+
+                        {{{{{{{{{-----{{{-{{{,,<<---<<<----<<__________>>--->>>>>,,,,,,[[[,,,,,,((((--((--((----((( CS
+  SSU_rRNA_eukarya   34 gucUcaaAGAUUAAGCCAUGCAUGUcUAaGuacAaguuuaUuauAugguGAAaCuGCGaAuGGCUCAUUAaAucAGUuguaauuuauuugg 124 
+                        gucUcaaAGAUUAAGCCAUGCAUGUcUAaGua+Aag++++ uauA++guGAAaCuGCGaAuGGCUCAUUAaAucAGUu+u +uuuauuug+
+        AF258606.1    2 GUCUCAAAGAUUAAGCCAUGCAUGUCUAAGUAUAAGCAAUCUAUACUGUGAAACUGCGAAUGGCUCAUUAAAUCAGUUAUCGUUUAUUUGA 92  
+                        67899*************************************************************************************9 PP
+
+                        (,,,,,,,,,,,,,<<<<----<<<<<<<_____>>>>>>>----->>>>,,,,,,<<<<<--<<______>>-->>>>>,,,,<<<<<<- CS
+  SSU_rRNA_eukarya  125 uauuuuaaauuuuauuuGGAUAaCuguGguAAuUcuagaGuUAAUACaugcaaaaauuuuuaauuauuaguggaagggguGcauuuauuug 215 
+                        ua+ u+  +u++ua+uuGGAUAaC+guGguAAuUcuagaG+UAAUACaugc+ aaa +++ +a+u    + gg+agggguG+auuuauu+g
+        AF258606.1   93 UAG-UACCUUACUACUUGGAUAACCGUGGUAAUUCUAGAGCUAAUACAUGCUGAAAACCCCGACU----UCGGGAGGGGUGUAUUUAUUAG 178 
+                        999.77888999*****************************************999888777765....34788899999*********** PP
+
+                        -------<<<<----<<<____>>>----->>>>------>>>>>>,,,,,,,,,<<<<-<<<<_____>>>>>>>>,,,))))---)))) CS
+  SSU_rRNA_eukarya  216 auuaaaaaucuauuagucuuuaggcuuuuuggguGAaUcaggguaacuuugcugAucguauggucuuuugccggcggugugucguucgagu 306 
+                        au+aaaaa+c+au   +cuu+ gg+ u  u+gguGA+Uca+g+uaacuu++c +Aucg+augg+cuu  gccggcg+ug +uc+uuc+a+u
+        AF258606.1  179 AUAAAAAACCAAU-GCCCUUCGGGGCUCCUUGGUGAUUCAUGAUAACUUAACGAAUCGCAUGGCCUUGCGCCGGCGAUGGUUCAUUCAAAU 268 
+                        ***9996555555.66677777777788999************************************************************ PP
+
+                        --))))<<<--<-<<<----<<<<<<<<_______>>>>>>>>>>>----->>>>,,,<<<<<<<<____>>>>--->>>>]]],<<<<<< CS
+  SSU_rRNA_eukarya  307 uUCUgacCUAUCAgcUuUcGauGGuagggUAuugGccuaccauGGcuaUaACGGGUAACGGgGaAUcAGGGUUcGAUuCCGGAGAGGgaGC 397 
+                        uUCUg cCUAUCA cUuUcGauGGuagg UA ugGccuaccauGG+ ++aACGGGUAACGGgGaAU+AGGGUUc AUuCCGGAGAGGgaGC
+        AF258606.1  269 UUCUGCCCUAUCAACUUUCGAUGGUAGGAUAGUGGCCUACCAUGGUAUCAACGGGUAACGGGGAAUUAGGGUUCUAUUCCGGAGAGGGAGC 359 
+                        ******************************************************************************************* PP
+
+                        __________>>>>>>,<<<<____>>>>,,,}}}}}}-},,,,,<-<<<---<<<<<___>>>>>->>>>,}}-}}}}}},,,,<<<<<< CS
+  SSU_rRNA_eukarya  398 CUGAGAAACGGCUaCCACuUCuAAGGaaGGCAGCAGGCGCGcAAAUUaCCCAAUcccgacacgggGAGGuAGUgAcgAgaaAUAacgaugc 488 
+                        CUGAGAAACGGCUaCCAC+UC+AAGGaaGGCAGCAGGCGCGcAAAUUaCCCAAUcccgac cgggGAGGuAGUgAc+A aaAUA +gau c
+        AF258606.1  360 CUGAGAAACGGCUACCACAUCCAAGGAAGGCAGCAGGCGCGCAAAUUACCCAAUCCCGACGCGGGGAGGUAGUGACAAUAAAUACUGAUAC 450 
+                        ******************************************************************************************* PP
+
+                        <<<<<<<____>>>>>>>>>>->>>,,,,,,<<<-<<<_______>>>>->>,,,,,,,,,<<<<<<-------<<<<-----<<____>> CS
+  SSU_rRNA_eukarya  489 gggucuuuuaugggguugguaAucggAAUGAguuuauuuUAAAuagguuagcGAGuAuCaAuuGGAGGGCAAGUCUGGUGCCAGCAGCCGC 579 
+                         gg cu+uu+uggg+ u+guaAu+ggAAUGAgu +a+uuUAAAua  uua+cGAG+A+CaAuuGGAGGGCAAGUCUGGUGCCAGCAGCCGC
+        AF258606.1  451 AGGGCUCUUUUGGGUCUUGUAAUUGGAAUGAGUACAAUUUAAAUACCUUAACGAGGAACAAUUGGAGGGCAAGUCUGGUGCCAGCAGCCGC 541 
+                        ******************************************************************************************* PP
+
+                        ------->>>>>>>>>>,}}}}}}}}}},,,,,,,,,,[[[-----[,((((---(((--------------------------------- CS
+  SSU_rRNA_eukarya  580 GGUAAUUCCAGCUCCaauAGcgUAuauuAAagUUGuUGcgGUUAAAAaGcuCGUAGUugaauuuaaguuuuuuuuuuuguuuuauuuuauu 670 
+                        GGUAAUUCCAGCUCCaauAGcgUAuauuAAagUUGuUGc+GUUAAAAaGcuCGUAGUugaa  u++g+  u + u+   + u     u + 
+        AF258606.1  542 GGUAAUUCCAGCUCCAAUAGCGUAUAUUAAAGUUGUUGCAGUUAAAAAGCUCGUAGUUGAACCUUGGGCCUGGCUGGCCGGUCCGCCUCAC 632 
+                        *****************************************************************99999887777666665555554444 PP
+
+                        ------------------------------------------------------------------------------------------- CS
+  SSU_rRNA_eukarya  671 uuuuuuuuuauuguuuuuuuauuuuuuuuuuuuuuuuauuaucuuuuuuuuuuuuuauguauauuuuuuuuuuuuuuuaguauuuguaauu 761 
+                         +  u u+ +  + +  +      uuu  uu u    au   c+u    uu  ++u                 u    +g a++ ++ a u
+        AF258606.1  633 CGCGUGUACUGGUCCGGCCGGGCCUUUCCUUCUGGGGAUCCGCAUGCCCUUC-ACU------------GGGCGUGCCGGGGAACCAGGACU 710 
+                        4444433333333333333322222222222222222222222211111111.111............11222445566677788889999 PP
+
+                        --------------------------------------------------------------------------------.---------- CS
+  SSU_rRNA_eukarya  762 uUuACUuUGAaaAAAUuAgAGUGuUcAAAGCAGGcuauauuugcuUGaAUauuuuaGCAUGGaAUaauagaauAggacuu.ugguuuuuuu 851 
+                        uUuACUuUGAaaAAAUuAgAGUGuUcAAAGCAGGc    uuugcu G AUa  uuaGCAUGGaAUaauagaauAggac u +ggu +u+uu
+        AF258606.1  711 UUUACUUUGAAAAAAUUAGAGUGUUCAAAGCAGGCC---UUUGCUCGGAUACAUUAGCAUGGAAUAAUAGAAUAGGACGUgCGGUCCUAUU 798 
+                        ***********************************9...999*********************************9998736677788999 PP
+
+                        ----------------------------------(((((((((--(((((((<<--<<<<<<<<---<<<______>>>------>>>>>> CS
+  SSU_rRNA_eukarya  852 uuguugguuuuuagaauugagguaAUGAUUAAuAGgguuggucGGgGgcguucGUAuugcgucGcuAGaGGUGAAAUuCuuuGAuCgucgc 942 
+                        uuguugguuu uag a  g  guaAUGAUUAAuAGgg+u+gucGGgGgc+u  GUAuu   u+G+ AGaGGUGAAAUuCuu GAu+  + +
+        AF258606.1  799 UUGUUGGUUUCUAGGACCGCCGUAAUGAUUAAUAGGGAUAGUCGGGGGCAUCAGUAUUCAAUUGUCAGAGGUGAAAUUCUUGGAUUUAUUG 889 
+                        9999999************************************************************************************ PP
+
+                        >>-->>,,,,<--<<____>>>)))))))-)))))-))))---)))--.-)))),,,,<<<<<<---<<---<<<<_________>>>>-- CS
+  SSU_rRNA_eukarya  943 aaGACgAaCuaaaGCGAAAGCauuugcCaAggaugUuucCaUUaAuCA.AGaaCGAAAGUugGgGGAucGAAGgcGAUcAGAUACCGuCgU 1032
+                        aaGAC AaCua++GCGAAAGCauuugcCaAggaugUuu+CaUUaAuCA  GaaCGAAAGUu+GgGGAucGAAG+cGAUcAGAUACCGuCgU
+        AF258606.1  890 AAGACUAACUACUGCGAAAGCAUUUGCCAAGGAUGUUUUCAUUAAUCAgUGAACGAAAGUUAGGGGAUCGAAGACGAUCAGAUACCGUCGU 980 
+                        ************************************************66***************************************** PP
+
+                        ->>>>>>>>,,,,,,,,,,((((((,<<<--<<<<<<<<-<<<________>>>>>>>>>>>-->>>,,,<<____>>,,,)))----))) CS
+  SSU_rRNA_eukarya 1033 AGUcCugaCcaUAAACgAUGccaaCugGugauugGuuguaguuauuuuuaugacuuggccggcagcuuacGGGAAAcCaaAGuuUUUGgGu 1123
+                        AGUc+u+aCc+UAAAC+AUGcc+aCu+G+gau+gG  g +guuauu uu+ugacu g +cggca cuuacG GAAA+CaaAGu UUUGgGu
+        AF258606.1  981 AGUCUUAACCGUAAACUAUGCCGACUAGGGAUCGGGCGAUGUUAUUCUUUUGACUCGCUCGGCACCUUACGAGAAAUCAAAGUCUUUGGGU 1071
+                        ******************************************************************************************* PP
+
+                        ]]]],<<<------<<<<____>>>>---->>>,,,,,,,,{{{{{-{{{{{{{--{{,,{{{{{{{{{{{{{{{{{,,,,<<<<______ CS
+  SSU_rRNA_eukarya 1124 UCcgGGGGGAGUAUgGucGCAAggCuGAAACUUAAAGGAAUUGACGGAAGGGCACCACcAGGaGUGGAGccUGCGGCUUAAuuUGACUCAA 1214
+                        UC+gGGGGGAGUAUgGucGCAAggCuGAAACUUAAAG AAUUGACGGAAGGGCACCACcAGG GUGGAGccUGCGGCUUAAuuUGACUCAA
+        AF258606.1 1072 UCUGGGGGGAGUAUGGUCGCAAGGCUGAAACUUAAAGAAAUUGACGGAAGGGCACCACCAGGCGUGGAGCCUGCGGCUUAAUUUGACUCAA 1162
+                        ******************************************************************************************* PP
+
+                        __>>>>,,,,,,,,{{{{{{{,,,,<<<<<--------<<<<<<________>>>>>>------>>>>>,,,[[-[[[[--[[[[[[[[[, CS
+  SSU_rRNA_eukarya 1215 CACGggaAAaCUuACCaGGuCcgGAcauuggaAGGAUUGAcAGaUUgAuAGcuCUuUCUuGAUUcggugGgUGGUGGUGCAUGGcCGuUcU 1305
+                        CACGgg+AAaCU+ACCaGGuCc+GAca+ g+aAGGAUUGAcAGaUUgA+AGcuCUuUCUuGAUU++gugGgUGGUGGUGCAUGGcCGuUcU
+        AF258606.1 1163 CACGGGGAAACUCACCAGGUCCAGACACAGUAAGGAUUGACAGAUUGAGAGCUCUUUCUUGAUUUUGUGGGUGGUGGUGCAUGGCCGUUCU 1253
+                        ******************************************************************************************* PP
+
+                        ,,((((((<<<____>>>,,<<<<______>>>>,,)))))),,,,,((((,<<<-<<<<--<<<<_________________________ CS
+  SSU_rRNA_eukarya 1306 UAGuugGUGGaGUGAuuUGUcUGGUUaAUUCCGaUAACgaaCGAGACcuuuaccuacuaauUaGuuuauugauuuuuuuuuaauuuuuuua 1396
+                        UAGuugGUGGaGUGAuuUGUcUG UUaAUU CGaUAACgaaCGAGACcuu+accu+cuaa+UaG          uu               
+        AF258606.1 1254 UAGUUGGUGGAGUGAUUUGUCUGCUUAAUUGCGAUAACGAACGAGACCUUAACCUGCUAAAUAGCCCGGCCCGCUU--------------- 1329
+                        **************************************************************99987665555444............... PP
+
+                        ___________________________>>>>-->>>>>>>,,<<<<<<<<_____>>>>>>>>,,,,,)))),,,,]]]]-]]]---]-]] CS
+  SSU_rRNA_eukarya 1397 uauuuuuuaaauuuauauuauaauuuaggCuUCuuagagGGAcuuuuggcguuuAgccggaggAAGuuugggGCAAuAaCAGgUCUGUGAU 1487
+                                       u      +    ggCuUCuuagagGGAcu u+ggc u++Agccg +ggAAGuuug+gGCAAuAaCAGgUCUGU AU
+        AF258606.1 1330 ---------------UGGCGGGUCGCCGGCUUCUUAGAGGGACUAUCGGC-UCAAGCCGAUGGAAGUUUGAGGCAAUAACAGGUCUGUUAU 1404
+                        ...............44555666778899**************9999887.799************************************* PP
+
+                        ]]]]],,,,,}}}}}}},,,}}-}}}}}}}}}},,,<<<<<<<-----<<<--------<<--<<<<____>>>>-->>---->>>----- CS
+  SSU_rRNA_eukarya 1488 GCCCUUAGAUGucCuGGGCuGCACGCGugCUACAaUGgugguuucAacguGuuuuuuuucCuuguccGAaAggggugGguAAuCuuuugAA 1578
+                        GCCCUUAGAUGu+CuGGGC+GCACGCG gCUACA UG++ g   cAacg+Guu  + u+cCuug ccG aAgg++ugGguAAuCuu u+AA
+        AF258606.1 1405 GCCCUUAGAUGUUCUGGGCCGCACGCGCGCUACACUGACAGAGCCAACGAGUUC-ACUACCUUGGCCGGAAGGUCUGGGUAAUCUUGUUAA 1494
+                        ***************************************************988.667889999999************************ PP
+
+                        ->>>>>>>,,,,,,<---<<<<<<<<________>>>>>>>>--->,,,,,}}}}},,,,,<<<<<<<<_______>>>>>>>>,,,,,,} CS
+  SSU_rRNA_eukarya 1579 aguccguCgUGaUuGGGAuuGguguUUGuAAUUauucguCgugAACgAGGAAUuCCUaGUAggcGcgggUCAUcAgcucgcgcuGAuUACG 1669
+                        a uc+guCgUG U GGGAu G++ +UUG+AAUUauu +uC+u AACgAGGAAU+CCUaGUA+gcGc  gUCAUcAgc +gcg+uGAuUACG
+        AF258606.1 1495 ACUCUGUCGUGCUGGGGAUAGAGCAUUGCAAUUAUUGCUCUUCAACGAGGAAUGCCUAGUAAGCGCAUGUCAUCAGCAUGCGUUGAUUACG 1585
+                        ******************************************************************************************* PP
+
+                        }---}}}}}}}}}}-}},,<-<<-<<-<-<<<<<<<<--<-<<<<<<<<<<<<--<<<<<<<<<<<<<<<<<<<<<<<<<.._____>>>> CS
+  SSU_rRNA_eukarya 1670 UCCCUGCCCUUUGUACACACCGCCCGUCGcUcCuaCCGAuUgggugguuugGuGAgguuuuugGacuuuuuuuuuuuguu..uuaauggcg 1758
+                        UCCCUGCCCUUUGUACACACCGCCCGUCGcU CuaCCGAuUg++ugg+uu+GuGAgg uuu+gGacu++ u+     g+u    aa+g c 
+        AF258606.1 1586 UCCCUGCCCUUUGUACACACCGCCCGUCGCUACUACCGAUUGAAUGGCUUAGUGAGGCUUUCGGACUGGCUCAGGGAGGUcgGCAACGACC 1676
+                        ******************************************************************9998877666333334666666677 PP
+
+                        ->>>>>>>>>>>>>>>>>>>>>-->>>>>>>>>>>>>-->>>>>>>>-->->>-->>-->,<<<<<< CS
+  SSU_rRNA_eukarya 1759 uggggggggggggAaguuggucaAaccuggucguuuaGAGGaaGgAgAAGUCGUAACAAGGUuuccG 1825
+                        +    g g  gg+Aagu  gucaAac+  guc+uuuaGAGGaaG+A+AAGUCGUAACAAGGUuuccG
+        AF258606.1 1677 ACCCAGAGCCGGAAAGUCUGUCAAACUACGUCAUUUAGAGGAAGUAAAAGUCGUAACAAGGUUUCCG 1743
+                        777788899999***************************************************9875 PP
+
+
+
+Internal HMM-only pipeline statistics summary: (--hmmonly used)
+---------------------------------------------------------------
+Query sequence(s):                                       1  (3486 residues searched)
+Target model(s):                                         1  (1851 consensus positions)
+Windows passing local HMM SSV      filter:               1  (0.5); expected (0.02)
+Windows passing local HMM MSV bias filter:               1  (0.5); expected (0.02)
+Windows passing local HMM Viterbi  filter:               1  (0.5); expected (0.001)
+Windows passing local HMM Forward  filter:               1  (0.5); expected (1e-05)
+Total HMM hits reported:                                 1  (0.4997)
+
+# CPU time: 0.12u 0.04s 00:00:00.16 Elapsed: 00:00:00.16
+//
+[ok]

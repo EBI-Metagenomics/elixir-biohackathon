@@ -1,0 +1,13 @@
+#target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+#------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+SSU_rRNA_eukarya     RF01960   AF258606.1           -         hmm       34     1825        2     1743      +     -    6 0.48   0.3 1273.5         0 !   -
+#
+# Program:         cmscan
+# Version:         1.1.2 (July 2016)
+# Pipeline mode:   SCAN
+# Query file:      AF258606.fa
+# Target file:     RF01960.cm
+# Option settings: cmscan -o output_hmm_output_hmm_AF258606.out --tblout output_hmm_AF258606.tbl --cut_ga --hmmonly RF01960.cm AF258606.fa 
+# Current dir:     /Users/mdb/work/biohackathon/S18
+# Date:            Wed Nov 14 13:53:18 2018
+# [ok]
