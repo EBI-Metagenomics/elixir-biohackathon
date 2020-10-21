@@ -80,6 +80,17 @@ def filter_minimum_match_proportion(region_matches):
     return {region: v for region, v in region_matches.items() if v['match_proportion'] >= MIN_MATCH_PROPORTION}
 
 
+def identify_run(infile_name):
+    """
+    Args:
+        infile_name: The name of the tblout file.
+    Return:
+        run: Run ID ERR*|SRR*
+    """
+    run = 'TEMP_NAME'
+    return run
+
+
 def retrieve_regions(tblout_file, outfile, subunit_type):
     regions = regions_16S if subunit_type == '16S' else regions_18S
 
@@ -92,6 +103,33 @@ def retrieve_regions(tblout_file, outfile, subunit_type):
     print(tblout_file, normalised_matches)
     with open(outfile, 'w') as f:
         json.dump(normalised_matches, f)
+    run_id = identify_run(tblout_file)
+    print_to_table(outfile, normalised_matches, run_id)
+
+
+def print_to_table(json_out, variable_regions, run_id):
+    """Prints the variable regions to a tsv file.
+    Args:
+        json_out: The name of the json outfile.
+        variable_regions: The dictionary that contains a list of variable regions for a run and match proportions.
+        run_id: Run ID (ERR*|SRR*)
+    """
+    # generate a file name for the tsv file
+    if json_out.endswith('json'):
+        tsv_out = re.sub('json$', 'tsv', json_out)
+    else:
+        tsv_out = '{}.tsv'.format(json_out)
+    # determine the variable region to output
+    if len(variable_regions.keys()) > 1:
+        amplified_region = '{}-{}'.format(min(variable_regions.keys()), max(variable_regions.keys()))
+    else:
+        amplified_region = next(iter(variable_regions))
+    header = 'Run\tAssertionEvidence\tAssertionMethod\tVariable region'
+    record = '{}\tECO_0000363\tautomatic assertion\t{}\n'.format(run_id, amplified_region)
+    if not (run_id and amplified_region):
+        sys.exit('ERROR: Values missing in line: {}'.format(record))
+    with open(tsv_out, 'w') as f:
+        f.write('\n'.join([header, record]))
 
 
 def parse_args(argv):
