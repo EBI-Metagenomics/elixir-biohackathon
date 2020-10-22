@@ -101,24 +101,21 @@ def retrieve_regions(tblout_file, outfile, subunit_type):
         region_matches.extend(get_regions(limits, regions))
     normalised_matches = normalise_results(region_matches, regions)
     print(tblout_file, normalised_matches)
-    with open(outfile, 'w') as f:
+    json_outfile = '{}.json'.format(outfile)
+    tsv_outfile = '{}.tsv'.format(outfile)
+    with open(json_outfile, 'w') as f:
         json.dump(normalised_matches, f)
     run_id = identify_run(tblout_file)
-    print_to_table(outfile, normalised_matches, run_id)
+    print_to_table(tsv_outfile, normalised_matches, run_id)
 
 
-def print_to_table(json_out, variable_regions, run_id):
+def print_to_table(tsv_out, variable_regions, run_id):
     """Prints the variable regions to a tsv file.
     Args:
-        json_out: The name of the json outfile.
-        variable_regions: The dictionary that contains a list of variable regions for a run and match proportions.
+        tsv_out: The name of the tsv outfile.
+        variable_regions: The dictionary that contains a list of variable regions for a run and their match proportions.
         run_id: Run ID (ERR*|SRR*)
     """
-    # generate a file name for the tsv file
-    if json_out.endswith('json'):
-        tsv_out = re.sub('json$', 'tsv', json_out)
-    else:
-        tsv_out = '{}.tsv'.format(json_out)
     # determine the variable region to output
     if len(variable_regions.keys()) > 1:
         amplified_region = '{}-{}'.format(min(variable_regions.keys()), max(variable_regions.keys()))
@@ -136,7 +133,7 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='Tool to determine which regions were amplified in 16S data')
     parser.add_argument('file', help='Overlapped tblout file')
     parser.add_argument('subunit_type', choices=['16S', '18S'], help='rRNA subunit type (16S vs 18S)')
-    parser.add_argument('-o', '--output_file', default='amplified_regions.json')
+    parser.add_argument('-o', '--output_file', default='amplified_regions', help='Prefix for the outfile name')
     return parser.parse_args(argv)
 
 
@@ -147,3 +144,5 @@ def main(argv):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+
+# add: turn outfile into a prefix, make sure the subunit matches the one that was selected
