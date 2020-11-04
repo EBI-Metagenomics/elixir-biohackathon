@@ -5,6 +5,7 @@ import glob
 import sys
 import argparse
 import json
+import time
 
 raw_f_regex = re.compile(
     "([A-z0-9.-]+)\s+-\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([-+])\s+([-+])\s+(\d+)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(.+)\s!\s+ -")
@@ -87,62 +88,114 @@ def identify_run(infile_name):
     Return:
         run: Run ID ERR*|SRR*
     """
-    run = 'TEMP_NAME'
+    run = os.path.basename(infile_name).split('_')[0]
     return run
 
 
-def retrieve_regions(tblout_file, outfile, subunit_type):
-    regions = regions_16S if subunit_type == '16S' else regions_18S
+def verify_gene(gene_declared, cm_detected):
+    """Check that the declared gene (16S or 18S) matches the cmsearch result.
+    This function expects that these specific models (RF00177 and RF01960) are used and ensures
+    that 18S is not treated as 16S and vice versa.
+    Args:
+        gene_declared: 16S or 18S (declared by the user)
+        cm_detected: The model that matched the sequence during cmsearch.
+    Return:
+        check: True or false
+    """
+    if gene_declared == '16S' and cm_detected == 'RF00177':
+        check = True
+    elif gene_declared == '18S' and cm_detected == 'RF01960':
+        check = True
+    else:
+        check = False
+    return check
 
-    data = load_data(tblout_file)
-    region_matches = []
-    for read in data:
-        limits = list(map(int, read[4:6]))
-        region_matches.extend(get_regions(limits, regions))
-    normalised_matches = normalise_results(region_matches, regions)
-    print(tblout_file, normalised_matches)
+
+def print_to_table(tsv_out, results):
+    """Prints the variable regions to a tsv file.
+    Args:
+        tsv_out: The name of the tsv outfile.
+        results: The dictionary that contains a list of variable regions for a run and their match proportions.
+    """
+    test_table = tsv_out + '.test'
+    t = open(test_table, 'w')
+    f = open(tsv_out, 'w')
+    # print the table header to file
+    f.write('Run\tAssertionEvidence\tAssertionMethod\tVariable region\n')
+    for run in results.keys():
+        # determine the variable region to output
+        if len(results[run].keys()) > 1:
+            amplified_region = '{}-{}'.format(min(results[run].keys()), max(results[run].keys()))
+        elif len(results[run].keys()) == 1:
+            amplified_region = next(iter(results[run]))
+        else:
+            continue
+        record = '{}\tECO_0000363\tautomatic assertion\t{}\n'.format(run, amplified_region)
+        if not (run and amplified_region):
+            sys.exit('ERROR: Values missing in line: {}'.format(record))
+        f.write(record)
+        t.write('\n{}\t'.format(run))
+        for key in results[run].keys():
+            t.write('{}\t{}\t'.format(key, results[run][key]['match_proportion']))
+    f.close()
+    t.close()
+
+
+def retrieve_regions(tblout_file_list, outfile, subunit_type):
+    regions = regions_16S if subunit_type == '16S' else regions_18S
+    file_counter = 0  # count how many files were analyzed
+    sequence_counter_total = 0  # count how many sequences in total were analyzed
+    sequence_counter_useful = 0  # count how many sequences an output was generated for
+    normalised_matches = dict()  # dictionary that will contain results for all runs
+    for tblout_file in tblout_file_list:
+        data = load_data(tblout_file)
+        run_id = identify_run(tblout_file)
+        region_matches = []
+        data_type_unsupported = 0
+        for read in data:
+            sequence_counter_total += 1
+            if not verify_gene(subunit_type, read[2]):
+                print('ERROR: provided subunit type ({}) does not match cmsearch result:\n{}'.format(subunit_type,
+                                                                                                        read))
+                data_type_unsupported = 1
+                break
+            limits = list(map(int, read[4:6]))
+            region_matches.extend(get_regions(limits, regions))
+            sequence_counter_useful += 1
+        if data_type_unsupported:
+            continue
+        else:
+            normalised_matches[run_id] = normalise_results(region_matches, regions)
+            #print(tblout_file, normalised_matches[run_id])
+            file_counter += 1
+
     json_outfile = '{}.json'.format(outfile)
     tsv_outfile = '{}.tsv'.format(outfile)
     with open(json_outfile, 'w') as f:
         json.dump(normalised_matches, f)
-    run_id = identify_run(tblout_file)
-    print_to_table(tsv_outfile, normalised_matches, run_id)
-
-
-def print_to_table(tsv_out, variable_regions, run_id):
-    """Prints the variable regions to a tsv file.
-    Args:
-        tsv_out: The name of the tsv outfile.
-        variable_regions: The dictionary that contains a list of variable regions for a run and their match proportions.
-        run_id: Run ID (ERR*|SRR*)
-    """
-    # determine the variable region to output
-    if len(variable_regions.keys()) > 1:
-        amplified_region = '{}-{}'.format(min(variable_regions.keys()), max(variable_regions.keys()))
-    else:
-        amplified_region = next(iter(variable_regions))
-    header = 'Run\tAssertionEvidence\tAssertionMethod\tVariable region'
-    record = '{}\tECO_0000363\tautomatic assertion\t{}\n'.format(run_id, amplified_region)
-    if not (run_id and amplified_region):
-        sys.exit('ERROR: Values missing in line: {}'.format(record))
-    with open(tsv_out, 'w') as f:
-        f.write('\n'.join([header, record]))
+    print_to_table(tsv_outfile, normalised_matches)
+    print('Analyzed {} files and {} sequences. Output generated for {} sequences'.format(file_counter,
+                                                                                         sequence_counter_total,
+                                                                                         sequence_counter_useful))
 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Tool to determine which regions were amplified in 16S data')
-    parser.add_argument('file', help='Overlapped tblout file')
+    parser.add_argument('files', nargs='+', help='A list of overlapped tblout files')
     parser.add_argument('subunit_type', choices=['16S', '18S'], help='rRNA subunit type (16S vs 18S)')
     parser.add_argument('-o', '--output_file', default='amplified_regions', help='Prefix for the outfile name')
     return parser.parse_args(argv)
 
 
 def main(argv):
+    t_start = time.perf_counter()  # time the run
     args = parse_args(argv)
-    retrieve_regions(args.file, args.output_file, args.subunit_type)
+    retrieve_regions(args.files, args.output_file, args.subunit_type)
+    t_stop = time.perf_counter()
+    t_fact = t_stop - t_start
+    print('Elapsed time:', '{0:.2f}'.format(t_fact), 'seconds')
 
 
 if __name__ == '__main__':
     main(sys.argv[1:])
 
-# add: turn outfile into a prefix, make sure the subunit matches the one that was selected
