@@ -1,9 +1,10 @@
+import argparse
+from collections import Counter
+import gzip
 import re
 import os
 import logging
-import glob
 import sys
-import argparse
 import json
 import time
 
@@ -12,7 +13,9 @@ raw_f_regex = re.compile(
 
 MIN_OVERLAP = 0.95
 
-MIN_MATCH_PROPORTION = 0.01
+MIN_SEQ_COUNT = 5000
+
+MAX_ERROR_PROPORTION = 0.00
 
 regions_16S = {
     'V1': [69, 92],
@@ -37,7 +40,8 @@ regions_18S = {
     'V9': [1727, 1750]
 }
 
-logging.basicConfig(level=logging.INFO)
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def calc_overlap(read, reg):
@@ -51,34 +55,54 @@ def calc_overlap(read, reg):
         return 0
 
 
-def get_regions(raw_sequence, regions):
-    return {region for region, limits in regions.items() if calc_overlap(raw_sequence, limits) >= MIN_OVERLAP}
+def get_multiregions(raw_sequence_coords, regions):
+    """Identify which variable region/s were amplified.
+
+    Args:
+        raw_sequence_coords: Match coordinates.
+        regions: Variable region coordinates.
+
+    Returns:
+        amplified_region: Amplified variable region/s.
+
+    """
+    # check if any of the coords are inside the region
+    matched_regions = [region for region, limits in regions.items()
+                           if calc_overlap(raw_sequence_coords, limits) >= MIN_OVERLAP]
+    if len(matched_regions) > 1:
+        amplified_region = '{}-{}'.format(min(matched_regions), max(matched_regions))
+    elif len(matched_regions) == 1:
+        amplified_region = matched_regions[0]
+    else:
+        amplified_region = ''
+    return amplified_region
 
 
 # Parse, filter empty lines and unpack into 2D array
 def load_data(filename):
-    with open(filename) as f:
+    read_function = gzip.open if filename.endswith('.gz') else open
+    with read_function(filename, 'rt') as f:
         return [l[0] for l in [raw_f_regex.findall(l) for l in f] if bool(l)]
 
 
-def normalise_results(region_matches, regions):
-    count_matches = len(region_matches)
-    results = {}
-    for k in regions:
-        matches = len([m for m in region_matches if m == k])
-        try:
-            ratio = matches / count_matches
-        except ZeroDivisionError:
-            ratio = 0
-        logging.debug(k, matches, ratio)
+def normalise_results(region_matches):
+    """Calculate region frequencies and output all regions that pass the threshold.
 
-        if ratio > 0:
-            results[k] = {'match_proportion': round(ratio, 4), }
-    return filter_minimum_match_proportion(results)
+    Args:
+        region_matches: List of regions matched by the amplicons in a file.
 
+    Returns:
+        Filtered dictionary where key = region, value = proportion of amplicons that map to the region.
 
-def filter_minimum_match_proportion(region_matches):
-    return {region: v for region, v in region_matches.items() if v['match_proportion'] >= MIN_MATCH_PROPORTION}
+    """
+    counter = Counter(region_matches)
+    logging.debug(counter)
+
+    return {
+        region: round(count/len(region_matches), 4)
+        for region, count in counter.items()
+        if count/len(region_matches) >= MAX_ERROR_PROPORTION
+    }
 
 
 def identify_run(infile_name):
@@ -117,26 +141,19 @@ def print_to_table(tsv_out, results):
         tsv_out: The name of the tsv outfile.
         results: The dictionary that contains a list of variable regions for a run and their match proportions.
     """
+    print(results)
     test_table = tsv_out + '.test'
     t = open(test_table, 'w')
     f = open(tsv_out, 'w')
     # print the table header to file
     f.write('Run\tAssertionEvidence\tAssertionMethod\tVariable region\n')
-    for run in results.keys():
-        # determine the variable region to output
-        if len(results[run].keys()) > 1:
-            amplified_region = '{}-{}'.format(min(results[run].keys()), max(results[run].keys()))
-        elif len(results[run].keys()) == 1:
-            amplified_region = next(iter(results[run]))
-        else:
-            continue
-        record = '{}\tECO_0000363\tautomatic assertion\t{}\n'.format(run, amplified_region)
-        if not (run and amplified_region):
-            sys.exit('ERROR: Values missing in line: {}'.format(record))
-        f.write(record)
-        t.write('\n{}\t'.format(run))
-        for key in results[run].keys():
-            t.write('{}\t{}\t'.format(key, results[run][key]['match_proportion']))
+    for run, amplified_region_dict in results.items():
+        for amplified_region in amplified_region_dict:
+            if not amplified_region == '':
+                record = '{}\tECO_0000363\tautomatic assertion\t{}\n'.format(run, amplified_region)
+                f.write(record)
+            t.write('\n{}\t'.format(run))
+            t.write('{}\t'.format(amplified_region))
     f.close()
     t.close()
 
@@ -150,23 +167,24 @@ def retrieve_regions(tblout_file_list, outfile, subunit_type):
     for tblout_file in tblout_file_list:
         data = load_data(tblout_file)
         run_id = identify_run(tblout_file)
-        region_matches = []
-        data_type_unsupported = 0
+        multiregion_matches = []
+        data_type_unsupported = False
         for read in data:
             sequence_counter_total += 1
             if not verify_gene(subunit_type, read[2]):
                 print('ERROR: provided subunit type ({}) does not match cmsearch result:\n{}'.format(subunit_type,
                                                                                                         read))
-                data_type_unsupported = 1
+                data_type_unsupported = True
                 break
             limits = list(map(int, read[4:6]))
-            region_matches.extend(get_regions(limits, regions))
+            multiregion_matches.append(get_multiregions(limits, regions))
             sequence_counter_useful += 1
-        if data_type_unsupported:
+        if data_type_unsupported or len(data) < MIN_SEQ_COUNT:
+            logging.info("Excluded\t{}\t{}\t{}\n".format(tblout_file, data_type_unsupported, len(data)))
             continue
         else:
-            normalised_matches[run_id] = normalise_results(region_matches, regions)
-            #print(tblout_file, normalised_matches[run_id])
+            logging.debug(run_id)
+            normalised_matches[run_id] = normalise_results(multiregion_matches)
             file_counter += 1
 
     json_outfile = '{}.json'.format(outfile)
@@ -199,3 +217,5 @@ def main(argv):
 if __name__ == '__main__':
     main(sys.argv[1:])
 
+### keep track of outliers
+### match the results to the cutoffs we decided on
