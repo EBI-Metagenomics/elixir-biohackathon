@@ -15,7 +15,7 @@ MIN_OVERLAP = 0.95
 
 MIN_SEQ_COUNT = 5000
 
-MAX_ERROR_PROPORTION = 0.00
+MAX_ERROR_PROPORTION = 0.01
 
 regions_16S = {
     'V1': [69, 92],
@@ -55,15 +55,15 @@ def calc_overlap(read, reg):
         return 0
 
 
-def get_multiregions(raw_sequence_coords, regions):
-    """Identify which variable region/s were amplified.
+def get_multiregion(raw_sequence_coords, regions):
+    """Identify which variable regions were amplified.
 
     Args:
         raw_sequence_coords: Match coordinates.
         regions: Variable region coordinates.
 
     Returns:
-        amplified_region: Amplified variable region/s.
+        amplified_region: Amplified variable regions.
 
     """
     # check if any of the coords are inside the region
@@ -85,6 +85,18 @@ def load_data(filename):
         return [l[0] for l in [raw_f_regex.findall(l) for l in f] if bool(l)]
 
 
+def unsplit_region(long_region):
+    interval = [int(var_reg.replace('V', '')) for var_reg in long_region.split('-')]
+    if len(interval) == 1:
+        interval = interval * 2
+    return interval
+
+
+def check_inclusiveness(more_frequent, less_frequent):
+    unsplit_more_frequent, unsplit_less_frequent = [unsplit_region(region) for region in [more_frequent, less_frequent]]
+    return unsplit_more_frequent[0] <= unsplit_less_frequent[0] and unsplit_more_frequent[1] >= unsplit_less_frequent[1]
+
+
 def normalise_results(region_matches):
     """Calculate region frequencies and output all regions that pass the threshold.
 
@@ -98,11 +110,32 @@ def normalise_results(region_matches):
     counter = Counter(region_matches)
     logging.debug(counter)
 
-    return {
-        region: round(count/len(region_matches), 4)
+    var_region_proportions = [
+        # [region, round(count / len(region_matches), 4)]
+        [region, count / len(region_matches)]
         for region, count in counter.items()
-        if count/len(region_matches) >= MAX_ERROR_PROPORTION
-    }
+        if count/len(region_matches) >= MAX_ERROR_PROPORTION and region != ''
+    ]
+    # sort by frequency in reverse order
+    var_region_proportions = sorted(var_region_proportions, key=lambda x: x[1], reverse=True)
+
+    if len(var_region_proportions) == 1:
+        return dict(var_region_proportions)
+    elif len(var_region_proportions) == 2:
+        more_frequent = var_region_proportions[0]
+        less_frequent = var_region_proportions[1]
+        if check_inclusiveness(more_frequent[0], less_frequent[0]):
+            if less_frequent[1] < 0.04:
+                return {more_frequent[0]: more_frequent[1]}
+            else:
+                return None
+        else:
+            if min(more_frequent[1], less_frequent[1]) > 0.1:
+                return dict(var_region_proportions)
+            else:
+                return None
+    else:
+        return None
 
 
 def identify_run(infile_name):
@@ -116,23 +149,59 @@ def identify_run(infile_name):
     return run
 
 
-def verify_gene(gene_declared, cm_detected):
-    """Check that the declared gene (16S or 18S) matches the cmsearch result.
-    This function expects that these specific models (RF00177 and RF01960) are used and ensures
-    that 18S is not treated as 16S and vice versa.
+def determine_cm(cm_detected):
+    """Returns the coordinates of variable regions for the model that the query sequence matched.
     Args:
-        gene_declared: 16S or 18S (declared by the user)
-        cm_detected: The model that matched the sequence during cmsearch.
-    Return:
-        check: True or false
+        cm_detected: The name of the model the sequence matched.
+
+    Returns:
+        model: A dictionary containing the coordinates of the variable regions for the matched model.
     """
-    if gene_declared == '16S' and cm_detected == 'RF00177':
-        check = True
-    elif gene_declared == '18S' and cm_detected == 'RF01960':
-        check = True
+    if cm_detected in ['RF00177', 'RF01959']:
+        model = regions_16S
+    elif cm_detected == 'RF01960':
+        model = regions_18S
     else:
-        check = False
-    return check
+        model = 'unsupported'
+    return model
+
+
+def determine_domain(cm_detected):
+    if cm_detected == 'RF00177':
+        return 'Bacteria'
+    elif cm_detected == 'RF01959':
+        return 'Archaea'
+    elif cm_detected == 'RF01960':
+        return 'Eukaryotes'
+
+
+def print_stats(run_id, num_sequences, num_unsupported, run_result, stats_out):
+    summary_num = dict()
+    for cm in run_result:
+        summary_num[cm] = dict()
+        stats = Counter(run_result[cm])
+        summary_num[cm]['empty'] = stats['']
+        summary_num[cm]['total regions'] = len(stats)
+        del stats['']
+        summary_num[cm]['regions'] = ', '.join(stats.keys())
+        summary_num[cm]['freqs'] = ', '.join(['{0:.4f}'.format(val/len(run_result[cm])) if len(run_result[cm]) > 0 else '0'
+                                              for val in stats.values()])
+
+    print_str = ''
+    models = ['RF00177', 'RF01959', 'RF01960']
+    for model in models:
+        if model in summary_num:
+            print_str += '{}\t{}\t{}\t'.format(summary_num[model].get('empty', 0), summary_num[model].get('regions', ''),
+                                               summary_num[model].get('freqs', 0))
+        else:
+            print_str += ' \t \t \t'
+    if num_sequences > 0:
+        stats_out.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(run_id, num_sequences,
+                                                          '{0:.3f}'.format(num_unsupported / num_sequences),
+                                                          '{0:.3f}'.format(len(run_result.get('RF00177', [])) / num_sequences),
+                                                          '{0:.3f}'.format(len(run_result.get('RF01959', [])) / num_sequences),
+                                                          '{0:.3f}'.format(len(run_result.get('RF01960', [])) / num_sequences),
+                                                          print_str))
 
 
 def print_to_table(tsv_out, results):
@@ -141,9 +210,8 @@ def print_to_table(tsv_out, results):
         tsv_out: The name of the tsv outfile.
         results: The dictionary that contains a list of variable regions for a run and their match proportions.
     """
-    print(results)
-    test_table = tsv_out + '.test'
-    t = open(test_table, 'w')
+    #logging.info(results)
+    ### ADD MARKER GENE
     f = open(tsv_out, 'w')
     # print the table header to file
     f.write('Run\tAssertionEvidence\tAssertionMethod\tVariable region\n')
@@ -152,47 +220,114 @@ def print_to_table(tsv_out, results):
             if not amplified_region == '':
                 record = '{}\tECO_0000363\tautomatic assertion\t{}\n'.format(run, amplified_region)
                 f.write(record)
-            t.write('\n{}\t'.format(run))
-            t.write('{}\t'.format(amplified_region))
     f.close()
-    t.close()
 
 
-def retrieve_regions(tblout_file_list, outfile, subunit_type):
-    regions = regions_16S if subunit_type == '16S' else regions_18S
+def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missing_out, seq_count_out):
     file_counter = 0  # count how many files were analyzed
     sequence_counter_total = 0  # count how many sequences in total were analyzed
     sequence_counter_useful = 0  # count how many sequences an output was generated for
     normalised_matches = dict()  # dictionary that will contain results for all runs
+    failed_run_counter = 0  # total number of excluded runs for any reason (except non-existing files)
+    run_counters = {k: 0 for k in ['one', 'two', 'ambiguous']}  # counters
+    seq_per_variable_region_count = dict()
+
     for tblout_file in tblout_file_list:
+        if not os.path.isfile(tblout_file):
+            unzipped_filename = tblout_file.replace('.gz', '')
+            if os.path.isfile(unzipped_filename):
+                tblout_file = unzipped_filename
+            else:
+                logging.info('File {} does not exist'.format(tblout_file))
+                missing_out.write(tblout_file)
+                continue
         data = load_data(tblout_file)
         run_id = identify_run(tblout_file)
-        multiregion_matches = []
-        data_type_unsupported = False
+        multiregion_matches = dict()
+        unsupported_matches = 0
         for read in data:
+            regions = determine_cm(read[2])
             sequence_counter_total += 1
-            if not verify_gene(subunit_type, read[2]):
-                print('ERROR: provided subunit type ({}) does not match cmsearch result:\n{}'.format(subunit_type,
-                                                                                                        read))
-                data_type_unsupported = True
-                break
             limits = list(map(int, read[4:6]))
-            multiregion_matches.append(get_multiregions(limits, regions))
-            sequence_counter_useful += 1
-        if data_type_unsupported or len(data) < MIN_SEQ_COUNT:
-            logging.info("Excluded\t{}\t{}\t{}\n".format(tblout_file, data_type_unsupported, len(data)))
+            if not regions == 'unsupported':
+                multiregion_matches.setdefault(read[2], []).append(get_multiregion(limits, regions))
+                sequence_counter_useful += 1
+            else:
+                unsupported_matches += 1
+
+        print_stats(run_id, len(data), unsupported_matches, multiregion_matches, stats_out)
+        if not data:
+            failed_run_counter += 1
             continue
-        else:
-            logging.debug(run_id)
-            normalised_matches[run_id] = normalise_results(multiregion_matches)
-            file_counter += 1
+
+        unsupported_fract = unsupported_matches/len(data)
+        if unsupported_fract >= MAX_ERROR_PROPORTION:
+            failed_run_counter += 1
+            logging.info("Excluded\t{}\t{}\t{}\n".format(tblout_file, '{0:.2f}'.format(unsupported_fract), len(data)))
+            continue
+
+        normalised_matches[run_id] = dict()
+
+        # filter out domains with <1%
+        multiregion_matches = {d: v for d, v in multiregion_matches.items() if len(v)/len(data) >= 0.01}
+
+        run_ok = True
+        for model, value in multiregion_matches.items():
+            if len(value) < MIN_SEQ_COUNT:
+                run_ok = False
+        if not run_ok:
+            failed_run_counter += 1
+            continue
+
+        run_status = 'one'
+        run_result = dict()
+        total_useful_sequences = 0.0
+        temp_seq_counter = dict()
+        for model, model_regions in multiregion_matches.items():
+            result = normalise_results(model_regions)
+            if result is None:
+                run_status = 'ambiguous'
+                break
+            elif len(result) == 2:
+                run_status = 'two'
+            run_result[determine_domain(model)] = result
+            for reg, freq in result.items():
+                total_useful_sequences += len(model_regions) * freq
+                temp_seq_counter[determine_domain(model) + ' ' + reg] = len(model_regions) * freq
+        if total_useful_sequences/len(data) < 0.95 and run_status != 'ambiguous':
+            failed_run_counter += 1
+            continue
+
+        file_counter += 1  # here intentionally
+        run_counters[run_status] += 1
+
+        if run_status != 'ambiguous':
+            normalised_matches[run_id] = run_result
+            for key, value in temp_seq_counter.items():
+                seq_per_variable_region_count.setdefault(key, 0)
+                seq_per_variable_region_count[key] += value
 
     json_outfile = '{}.json'.format(outfile)
     tsv_outfile = '{}.tsv'.format(outfile)
     with open(json_outfile, 'w') as f:
         json.dump(normalised_matches, f)
-    print_to_table(tsv_outfile, normalised_matches)
-    print('Analyzed {} files and {} sequences. Output generated for {} sequences'.format(file_counter,
+    # print_to_table(tsv_outfile, normalised_matches)
+    condensed_out.write('\t'.join([
+        'Total number of files failed',
+        'Total number of files analyzed',
+        'Number of runs with one region',
+        'Number of runs with two regions',
+        'Number of runs with too many regions or unbalanced 2 region runs']) + '\n')
+    condensed_out.write('{}\t{}\t{}\t{}\t{}\n'.format(
+        failed_run_counter,
+        file_counter,
+        run_counters['one'],
+        run_counters['two'],
+        run_counters['ambiguous']))
+    for key, value in seq_per_variable_region_count.items():
+        seq_count_out.write('{}\t{}\n'.format(key, int(value)))
+
+    logging.info('Analyzed {} files and {} sequences. Output generated for {} sequences'.format(file_counter,
                                                                                          sequence_counter_total,
                                                                                          sequence_counter_useful))
 
@@ -200,7 +335,6 @@ def retrieve_regions(tblout_file_list, outfile, subunit_type):
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Tool to determine which regions were amplified in 16S data')
     parser.add_argument('files', nargs='+', help='A list of overlapped tblout files')
-    parser.add_argument('subunit_type', choices=['16S', '18S'], help='rRNA subunit type (16S vs 18S)')
     parser.add_argument('-o', '--output_file', default='amplified_regions', help='Prefix for the outfile name')
     return parser.parse_args(argv)
 
@@ -208,10 +342,25 @@ def parse_args(argv):
 def main(argv):
     t_start = time.perf_counter()  # time the run
     args = parse_args(argv)
-    retrieve_regions(args.files, args.output_file, args.subunit_type)
+    stats_file = '{}.stats'.format(args.output_file)
+    condensed_stats_file = '{}.condensed_stats'.format(args.output_file)
+    missing_files_log = '{}.missing_files.txt'.format(args.output_file)
+    seq_count_log = '{}.seq_count.txt'.format(args.output_file)
+    stats_out = open(stats_file, 'w')
+    condensed_out = open(condensed_stats_file, 'w')
+    missing_out = open(missing_files_log, 'w')
+    seq_count_out = open(seq_count_log, 'w')
+    stats_out.write('Run ID\tTotal # sequences\tFraction unsupported seq (map unsupported CM)\tFraction bacteria\t'
+                    'Fraction archaea\tFraction eukaryotes\tUnidentified bact\tRegions bact\tFreqs bact\t'
+                    'Unidentified arch\tRegions arch\tFreqs arch\tUnidentified euk\tRegions euk\tFreqs euk\n')
+    retrieve_regions(args.files, args.output_file, stats_out, condensed_out, missing_out, seq_count_out)
+    stats_out.close()
+    condensed_out.close()
+    missing_out.close()
+    seq_count_out.close()
     t_stop = time.perf_counter()
     t_fact = t_stop - t_start
-    print('Elapsed time:', '{0:.2f}'.format(t_fact), 'seconds')
+    logging.info('Elapsed time: {0:.2f} seconds'.format(t_fact))
 
 
 if __name__ == '__main__':
