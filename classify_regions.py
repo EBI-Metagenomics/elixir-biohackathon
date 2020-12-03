@@ -17,6 +17,8 @@ MIN_SEQ_COUNT = 5000
 
 MAX_ERROR_PROPORTION = 0.01
 
+MAX_INTERNAL_PRIMER_PROPORTION = 0.04
+
 regions_16S = {
     'V1': [69, 92],
     'V2': [131, 239],
@@ -76,6 +78,25 @@ def get_multiregion(raw_sequence_coords, regions):
     else:
         amplified_region = ''
     return amplified_region
+
+
+def check_primer_position(raw_sequence_coords, regions):
+    """Checks if the sequence starts and/or ends inside a variable region.
+
+    Args:
+        raw_sequence_coords: Match coordinates.
+
+    Returns:
+        True or False.
+
+    """
+    result_flag = False
+    margin = 3  # allowed margin of error
+    for coord in raw_sequence_coords:
+        for region in regions.values():
+            if coord in range(region[0] + margin, region[1] - margin):
+                result_flag = True
+    return result_flag
 
 
 # Parse, filter empty lines and unpack into 2D array
@@ -175,7 +196,7 @@ def determine_domain(cm_detected):
         return 'Eukaryotes'
 
 
-def print_stats(run_id, num_sequences, num_unsupported, run_result, stats_out):
+def print_stats(run_id, num_sequences, num_unsupported, num_inside_vr, run_result, stats_out):
     summary_num = dict()
     for cm in run_result:
         summary_num[cm] = dict()
@@ -191,17 +212,18 @@ def print_stats(run_id, num_sequences, num_unsupported, run_result, stats_out):
     models = ['RF00177', 'RF01959', 'RF01960']
     for model in models:
         if model in summary_num:
-            print_str += '{}\t{}\t{}\t'.format(summary_num[model].get('empty', 0), summary_num[model].get('regions', ''),
-                                               summary_num[model].get('freqs', 0))
+            print_str += ('{}\t' * 3).format(summary_num[model].get('empty', 0), summary_num[model].get('regions', ''),
+                                             summary_num[model].get('freqs', 0))
         else:
             print_str += ' \t \t \t'
     if num_sequences > 0:
-        stats_out.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(run_id, num_sequences,
-                                                          '{0:.3f}'.format(num_unsupported / num_sequences),
-                                                          '{0:.3f}'.format(len(run_result.get('RF00177', [])) / num_sequences),
-                                                          '{0:.3f}'.format(len(run_result.get('RF01959', [])) / num_sequences),
-                                                          '{0:.3f}'.format(len(run_result.get('RF01960', [])) / num_sequences),
-                                                          print_str))
+        stats_out.write(('{}\t' * 7 + '{}\n').format(run_id, num_sequences,
+                                                     '{0:.3f}'.format(num_unsupported / num_sequences),
+                                                     '{0:.3f}'.format(num_inside_vr / num_sequences),
+                                                     '{0:.3f}'.format(len(run_result.get('RF00177', [])) / num_sequences),
+                                                     '{0:.3f}'.format(len(run_result.get('RF01959', [])) / num_sequences),
+                                                     '{0:.3f}'.format(len(run_result.get('RF01960', [])) / num_sequences),
+                                                     print_str))
 
 
 def print_to_table(tsv_out, results):
@@ -244,26 +266,40 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
         data = load_data(tblout_file)
         run_id = identify_run(tblout_file)
         multiregion_matches = dict()
-        unsupported_matches = 0
+        unsupported_matches = 0  # tracks the number of sequences that map to unsupported models
+        primer_inside_vr = 0  # tracks the number of sequences that start and/or end inside a variable region
         for read in data:
             regions = determine_cm(read[2])
             sequence_counter_total += 1
             limits = list(map(int, read[4:6]))
             if not regions == 'unsupported':
                 multiregion_matches.setdefault(read[2], []).append(get_multiregion(limits, regions))
+                if check_primer_position(limits, regions):
+                    primer_inside_vr += 1
                 sequence_counter_useful += 1
             else:
                 unsupported_matches += 1
 
-        print_stats(run_id, len(data), unsupported_matches, multiregion_matches, stats_out)
+        print_stats(run_id, len(data), unsupported_matches, primer_inside_vr, multiregion_matches, stats_out)
         if not data:
             failed_run_counter += 1
+            logging.info('failing - no data')
             continue
 
         unsupported_fract = unsupported_matches/len(data)
         if unsupported_fract >= MAX_ERROR_PROPORTION:
             failed_run_counter += 1
+            logging.info('failing - too many unsupported models')
             logging.info("Excluded\t{}\t{}\t{}\n".format(tblout_file, '{0:.2f}'.format(unsupported_fract), len(data)))
+            continue
+
+        # filter out runs with too many sequences starting/ending inside variable regions
+        internal_seq_fract = primer_inside_vr/len(data)
+        if internal_seq_fract > MAX_INTERNAL_PRIMER_PROPORTION:
+            failed_run_counter += 1
+            logging.info('failing - too many internal mappings')
+            logging.info("Excluded due to high proportion of internal primers:\t{}\t{}\n".format(
+                tblout_file, '{0:.2f}'.format(internal_seq_fract)))
             continue
 
         normalised_matches[run_id] = dict()
@@ -277,6 +313,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
                 run_ok = False
         if not run_ok:
             failed_run_counter += 1
+            logging.info('failing - too few sequences in a domain')
             continue
 
         run_status = 'one'
@@ -296,6 +333,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
                 temp_seq_counter[determine_domain(model) + ' ' + reg] = len(model_regions) * freq
         if total_useful_sequences/len(data) < 0.95 and run_status != 'ambiguous':
             failed_run_counter += 1
+            logging.info('failing - too few useful sequences')
             continue
 
         file_counter += 1  # here intentionally
@@ -342,15 +380,16 @@ def parse_args(argv):
 def main(argv):
     t_start = time.perf_counter()  # time the run
     args = parse_args(argv)
-    stats_file = '{}.stats'.format(args.output_file)
-    condensed_stats_file = '{}.condensed_stats'.format(args.output_file)
-    missing_files_log = '{}.missing_files.txt'.format(args.output_file)
-    seq_count_log = '{}.seq_count.txt'.format(args.output_file)
+    stats_file = '{}.stats'.format(args.output_file)  # detailed stats for each run before filtration steps
+    condensed_stats_file = '{}.condensed_stats'.format(args.output_file)  # basic stats for the batch of runs
+    missing_files_log = '{}.missing_files.txt'.format(args.output_file)  # the names of non-existent files
+    seq_count_log = '{}.seq_count.txt'.format(args.output_file)  # the number of sequences per domain/VR in the batch
     stats_out = open(stats_file, 'w')
     condensed_out = open(condensed_stats_file, 'w')
     missing_out = open(missing_files_log, 'w')
     seq_count_out = open(seq_count_log, 'w')
-    stats_out.write('Run ID\tTotal # sequences\tFraction unsupported seq (map unsupported CM)\tFraction bacteria\t'
+    stats_out.write('Run ID\tTotal # sequences\tFraction unsupported seq (map unsupported CM)\t'
+                    'Fraction of sequences with start and/or end inside a VR\tFraction bacteria\t'
                     'Fraction archaea\tFraction eukaryotes\tUnidentified bact\tRegions bact\tFreqs bact\t'
                     'Unidentified arch\tRegions arch\tFreqs arch\tUnidentified euk\tRegions euk\tFreqs euk\n')
     retrieve_regions(args.files, args.output_file, stats_out, condensed_out, missing_out, seq_count_out)
@@ -366,5 +405,3 @@ def main(argv):
 if __name__ == '__main__':
     main(sys.argv[1:])
 
-### keep track of outliers
-### match the results to the cutoffs we decided on
