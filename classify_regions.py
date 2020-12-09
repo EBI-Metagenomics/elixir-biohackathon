@@ -17,9 +17,9 @@ MIN_SEQ_COUNT = 5000
 
 MAX_ERROR_PROPORTION = 0.01
 
-MAX_INTERNAL_PRIMER_PROPORTION = 0.04
+MAX_INTERNAL_PRIMER_PROPORTION = 0.2
 
-regions_16S = {
+regions_16S_bacteria = {
     'V1': [69, 92],
     'V2': [131, 239],
     'V3': [430, 487],
@@ -29,6 +29,18 @@ regions_16S = {
     'V7': [1107, 1164],
     'V8': [1234, 1285],
     'V9': [1426, 1456]
+}
+
+regions_16S_archaea = {
+    'V1': [61, 79],
+    'V2': [114, 223],
+    'V3': [397, 436],
+    'V4': [516, 623],
+    'V5': [763, 824],
+    'V6': [932, 982],
+    'V7': [1056, 1119],
+    'V8': [1189, 1240],
+    'V9': [1372, 1410]
 }
 
 regions_18S = {
@@ -178,8 +190,10 @@ def determine_cm(cm_detected):
     Returns:
         model: A dictionary containing the coordinates of the variable regions for the matched model.
     """
-    if cm_detected in ['RF00177', 'RF01959']:
-        model = regions_16S
+    if cm_detected == 'RF00177':
+        model = regions_16S_bacteria
+    elif cm_detected == 'RF01959':
+        model = regions_16S_archaea
     elif cm_detected == 'RF01960':
         model = regions_18S
     else:
