@@ -43,7 +43,7 @@ regions_16S_archaea = {
     'V9': [1372, 1410]
 }
 
-regions_18S = {
+regions_18S_old = {
     'V1': [69, 105],
     'V2': [135, 190],
     'V3': [474, 545],
@@ -52,6 +52,17 @@ regions_18S = {
     'V7': [1366, 1382],
     'V8': [1528, 1608],
     'V9': [1727, 1750]
+}
+
+regions_18S = {
+    'V1': [69, 109],
+    'V2': [136, 298],  #this
+    'V3': [474, 545],
+    'V4': [627, 873],  #this
+    'V5': [1059, 1102],
+    'V7': [1366, 1454],  #this
+    'V8': [1526, 1608],
+    'V9': [1728, 1795]  #this
 }
 
 
@@ -163,7 +174,8 @@ def normalise_results(region_matches):
             else:
                 return None
         else:
-            if min(more_frequent[1], less_frequent[1]) > 0.1:
+            if min(more_frequent[1], less_frequent[1]) > 0.1 and not \
+                    check_inclusiveness(less_frequent[0], more_frequent[0]):
                 return dict(var_region_proportions)
             else:
                 return None
@@ -210,6 +222,13 @@ def determine_domain(cm_detected):
         return 'Eukaryotes'
 
 
+def determine_marker_gene(domain):
+    if domain in ['Bacteria', 'Archaea']:
+        return '16S'
+    elif domain == 'Eukaryotes':
+        return '18S'
+
+
 def print_stats(run_id, num_sequences, num_unsupported, num_inside_vr, run_result, stats_out):
     summary_num = dict()
     for cm in run_result:
@@ -247,15 +266,19 @@ def print_to_table(tsv_out, results):
         results: The dictionary that contains a list of variable regions for a run and their match proportions.
     """
     #logging.info(results)
-    ### ADD MARKER GENE
     f = open(tsv_out, 'w')
     # print the table header to file
-    f.write('Run\tAssertionEvidence\tAssertionMethod\tVariable region\n')
+    f.write('Run\tAssertionEvidence\tAssertionMethod\tMarker gene\tVariable region\n')
     for run, amplified_region_dict in results.items():
-        for amplified_region in amplified_region_dict:
-            if not amplified_region == '':
-                record = '{}\tECO_0000363\tautomatic assertion\t{}\n'.format(run, amplified_region)
-                f.write(record)
+        records = set()
+        for domain, amplified_regions in amplified_region_dict.items():
+            for vr in amplified_regions.keys():
+                if not vr == '':
+                    record = '{}\tECO_0000363\tautomatic assertion\t{}\t{}\n'.format(run, determine_marker_gene(domain),
+                                                                                     vr)
+                    records.add(record)
+        for record_to_print in records:
+            f.write(record_to_print)
     f.close()
 
 
@@ -275,7 +298,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
                 tblout_file = unzipped_filename
             else:
                 logging.info('File {} does not exist'.format(tblout_file))
-                missing_out.write(tblout_file)
+                missing_out.write('{}\n'.format(tblout_file))
                 continue
         data = load_data(tblout_file)
         run_id = identify_run(tblout_file)
@@ -363,7 +386,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
     tsv_outfile = '{}.tsv'.format(outfile)
     with open(json_outfile, 'w') as f:
         json.dump(normalised_matches, f)
-    # print_to_table(tsv_outfile, normalised_matches)
+    print_to_table(tsv_outfile, normalised_matches)
     condensed_out.write('\t'.join([
         'Total number of files failed',
         'Total number of files analyzed',
