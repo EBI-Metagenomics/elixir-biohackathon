@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# coding=utf-8
+
 import argparse
 from collections import Counter
 import gzip
@@ -9,7 +12,7 @@ import json
 import time
 
 raw_f_regex = re.compile(
-    "([A-z0-9.-]+)\s+-\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([-+])\s+([-+])\s+(\d+)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(.+)\s!\s+ -")
+    "([A-z0-9\.\-\:]+)\s+-\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([-+])\s+([-+])\s+(\d+)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(.+)\s!\s+ -")
 
 MIN_OVERLAP = 0.95
 
@@ -43,28 +46,16 @@ regions_16S_archaea = {
     'V9': [1372, 1410]
 }
 
-regions_18S_old = {
-    'V1': [69, 105],
-    'V2': [135, 190],
-    'V3': [474, 545],
-    'V4': [627, 727],
-    'V5': [1059, 1102],
-    'V7': [1366, 1382],
-    'V8': [1528, 1608],
-    'V9': [1727, 1750]
-}
-
 regions_18S = {
     'V1': [69, 109],
-    'V2': [136, 298],  #this
+    'V2': [136, 298],
     'V3': [474, 545],
-    'V4': [627, 873],  #this
+    'V4': [627, 873],
     'V5': [1059, 1102],
-    'V7': [1366, 1454],  #this
+    'V7': [1366, 1454],
     'V8': [1526, 1608],
-    'V9': [1728, 1795]  #this
+    'V9': [1728, 1795]
 }
-
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -305,6 +296,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
         multiregion_matches = dict()
         unsupported_matches = 0  # tracks the number of sequences that map to unsupported models
         primer_inside_vr = 0  # tracks the number of sequences that start and/or end inside a variable region
+        per_read_info = dict()  # dictionary will contain read names for each variable region
         for read in data:
             regions = determine_cm(read[2])
             sequence_counter_total += 1
@@ -314,6 +306,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
                 if check_primer_position(limits, regions):
                     primer_inside_vr += 1
                 sequence_counter_useful += 1
+                per_read_info.setdefault(get_multiregion(limits, regions), []).append(read[0])
             else:
                 unsupported_matches += 1
 
@@ -373,7 +366,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
             logging.info('failing - too few useful sequences')
             continue
 
-        file_counter += 1  # here intentionally
+        file_counter += 1
         run_counters[run_status] += 1
 
         if run_status != 'ambiguous':
@@ -381,6 +374,11 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
             for key, value in temp_seq_counter.items():
                 seq_per_variable_region_count.setdefault(key, 0)
                 seq_per_variable_region_count[key] += value
+            for key in per_read_info.keys():
+                if not key == '':
+                    per_read_filename = '{}.{}.txt'.format(outfile, key)
+                    with open(per_read_filename, 'w') as f:
+                        f.write('\n'.join(per_read_info[key]))
 
     json_outfile = '{}.json'.format(outfile)
     tsv_outfile = '{}.tsv'.format(outfile)
