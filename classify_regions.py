@@ -84,7 +84,7 @@ def get_multiregion(raw_sequence_coords, regions):
     """
     # check if any of the coords are inside the region
     matched_regions = [region for region, limits in regions.items()
-                           if calc_overlap(raw_sequence_coords, limits) >= MIN_OVERLAP]
+                       if calc_overlap(raw_sequence_coords, limits) >= MIN_OVERLAP]
     if len(matched_regions) > 1:
         amplified_region = '{}-{}'.format(min(matched_regions), max(matched_regions))
     elif len(matched_regions) == 1:
@@ -229,8 +229,10 @@ def print_stats(run_id, num_sequences, num_unsupported, num_inside_vr, run_resul
         summary_num[cm]['total regions'] = len(stats)
         del stats['']
         summary_num[cm]['regions'] = ', '.join(stats.keys())
-        summary_num[cm]['freqs'] = ', '.join(['{0:.4f}'.format(val/len(run_result[cm])) if len(run_result[cm]) > 0 else '0'
-                                              for val in stats.values()])
+        summary_num[cm]['freqs'] = ', '.join([
+            '{0:.4f}'.format(val/len(run_result[cm])) if len(run_result[cm]) > 0 else '0'
+            for val in stats.values()
+        ])
 
     print_str = ''
     models = ['RF00177', 'RF01959', 'RF01960']
@@ -273,7 +275,7 @@ def print_to_table(tsv_out, results):
     f.close()
 
 
-def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missing_out, seq_count_out):
+def retrieve_regions(tblout_file_list, outfile_prefix, stats_out, condensed_out, missing_out, seq_count_out):
     file_counter = 0  # count how many files were analyzed
     sequence_counter_total = 0  # count how many sequences in total were analyzed
     sequence_counter_useful = 0  # count how many sequences an output was generated for
@@ -313,13 +315,13 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
         print_stats(run_id, len(data), unsupported_matches, primer_inside_vr, multiregion_matches, stats_out)
         if not data:
             failed_run_counter += 1
-            logging.info('failing - no data')
+            logging.info('No output will be produced - no data')
             continue
 
         unsupported_fract = unsupported_matches/len(data)
         if unsupported_fract >= MAX_ERROR_PROPORTION:
             failed_run_counter += 1
-            logging.info('failing - too many unsupported models')
+            logging.info('No output will be produced - too many unsupported models')
             logging.info("Excluded\t{}\t{}\t{}\n".format(tblout_file, '{0:.2f}'.format(unsupported_fract), len(data)))
             continue
 
@@ -327,7 +329,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
         internal_seq_fract = primer_inside_vr/len(data)
         if internal_seq_fract > MAX_INTERNAL_PRIMER_PROPORTION:
             failed_run_counter += 1
-            logging.info('failing - too many internal mappings')
+            logging.info('No output will be produced - too many internal mappings')
             logging.info("Excluded due to high proportion of internal primers:\t{}\t{}\n".format(
                 tblout_file, '{0:.2f}'.format(internal_seq_fract)))
             continue
@@ -343,7 +345,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
                 run_ok = False
         if not run_ok:
             failed_run_counter += 1
-            logging.info('failing - too few sequences in a domain')
+            logging.info('No output will be produced - too few sequences in a domain')
             continue
 
         run_status = 'one'
@@ -363,7 +365,7 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
                 temp_seq_counter[determine_domain(model) + ' ' + reg] = len(model_regions) * freq
         if total_useful_sequences/len(data) < 0.95 and run_status != 'ambiguous':
             failed_run_counter += 1
-            logging.info('failing - too few useful sequences')
+            logging.info('No output will be produced - too few useful sequences')
             continue
 
         file_counter += 1
@@ -376,12 +378,12 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
                 seq_per_variable_region_count[key] += value
             for key in per_read_info.keys():
                 if not key == '':
-                    per_read_filename = '{}.{}.txt'.format(outfile, key)
+                    per_read_filename = '{}.{}.txt'.format(outfile_prefix, key)
                     with open(per_read_filename, 'w') as f:
                         f.write('\n'.join(per_read_info[key]))
 
-    json_outfile = '{}.json'.format(outfile)
-    tsv_outfile = '{}.tsv'.format(outfile)
+    json_outfile = '{}.json'.format(outfile_prefix)
+    tsv_outfile = '{}.tsv'.format(outfile_prefix)
     with open(json_outfile, 'w') as f:
         json.dump(normalised_matches, f)
     print_to_table(tsv_outfile, normalised_matches)
@@ -400,25 +402,33 @@ def retrieve_regions(tblout_file_list, outfile, stats_out, condensed_out, missin
     for key, value in seq_per_variable_region_count.items():
         seq_count_out.write('{}\t{}\n'.format(key, int(value)))
 
-    logging.info('Analyzed {} files and {} sequences. Output generated for {} sequences'.format(file_counter,
-                                                                                         sequence_counter_total,
-                                                                                         sequence_counter_useful))
+    logging.info('Analyzed {} files and {} sequences. Output generated for {} sequences'.format(
+        file_counter, sequence_counter_total, sequence_counter_useful))
 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Tool to determine which regions were amplified in 16S data')
-    parser.add_argument('files', nargs='+', help='A list of overlapped tblout files')
-    parser.add_argument('-o', '--output_file', default='amplified_regions', help='Prefix for the outfile name')
+    parser.add_argument('files', nargs='+',
+                        help='A list of overlapped tblout files')
+    parser.add_argument('-d', '--output_dir', default='variable-region-inference',
+                        help='Directory to which results will be saved')
+    parser.add_argument('-o', '--output_prefix', default='amplified_regions',
+                        help='Prefix for all outputs')
+    parser.add_argument('--statistics', action='store_true',
+                        help='Print statistics files')
     return parser.parse_args(argv)
 
 
 def main(argv):
     t_start = time.perf_counter()  # time the run
     args = parse_args(argv)
-    stats_file = '{}.stats'.format(args.output_file)  # detailed stats for each run before filtration steps
-    condensed_stats_file = '{}.condensed_stats'.format(args.output_file)  # basic stats for the batch of runs
-    missing_files_log = '{}.missing_files.txt'.format(args.output_file)  # the names of non-existent files
-    seq_count_log = '{}.seq_count.txt'.format(args.output_file)  # the number of sequences per domain/VR in the batch
+    if not os.path.isdir(args.output_dir):
+        os.mkdir(args.output_dir)
+    prefix = os.path.join(args.output_dir, args.output_prefix)
+    stats_file = '{}.stats'.format(prefix)  # detailed stats for each run before filtration steps
+    condensed_stats_file = '{}.condensed_stats'.format(prefix)  # basic stats for the batch of runs
+    missing_files_log = '{}.missing_files.txt'.format(prefix)  # the names of non-existent files
+    seq_count_log = '{}.seq_count.txt'.format(prefix)  # the number of sequences per domain/VR in the batch
     stats_out = open(stats_file, 'w')
     condensed_out = open(condensed_stats_file, 'w')
     missing_out = open(missing_files_log, 'w')
@@ -427,11 +437,14 @@ def main(argv):
                     'Fraction of sequences with start and/or end inside a VR\tFraction bacteria\t'
                     'Fraction archaea\tFraction eukaryotes\tUnidentified bact\tRegions bact\tFreqs bact\t'
                     'Unidentified arch\tRegions arch\tFreqs arch\tUnidentified euk\tRegions euk\tFreqs euk\n')
-    retrieve_regions(args.files, args.output_file, stats_out, condensed_out, missing_out, seq_count_out)
+    retrieve_regions(args.files, prefix, stats_out, condensed_out, missing_out, seq_count_out)
     stats_out.close()
     condensed_out.close()
     missing_out.close()
     seq_count_out.close()
+    if not args.statistics:
+        for s_file in (stats_file, condensed_stats_file, missing_files_log, seq_count_log):
+            os.remove(s_file)
     t_stop = time.perf_counter()
     t_fact = t_stop - t_start
     logging.info('Elapsed time: {0:.2f} seconds'.format(t_fact))
@@ -440,3 +453,5 @@ def main(argv):
 if __name__ == '__main__':
     main(sys.argv[1:])
 
+# don't print json
+# name the tsv file better
