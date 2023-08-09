@@ -12,7 +12,7 @@ import json
 import time
 
 raw_f_regex = re.compile(
-    "([A-z0-9\.\-\:]+)\s+-\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([-+])\s+([-+])\s+(\d+)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(.+)\s!\s+ -")
+    "([A-z0-9\.\-\:]+)\s+-\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+([-+])\s+([-+])\s+(\d+)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(\d+[\.\d]*)\s+(.+)\s!\s+ .*")
 
 MIN_OVERLAP = 0.95
 
@@ -353,6 +353,7 @@ def retrieve_regions(tblout_file_list, outfile_prefix, stats_out, condensed_out,
         total_useful_sequences = 0.0
         temp_seq_counter = dict()
         for model, model_regions in multiregion_matches.items():
+            print(model)
             result = normalise_results(model_regions)
             if result is None:
                 run_status = 'ambiguous'
